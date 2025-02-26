@@ -1,108 +1,102 @@
-// r3fManager.ts
-import React, { createContext, useContext, useRef, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
+// r3fManager.ts - Core framework functionality
+import React from 'react';
 import { createRoot } from 'react-dom/client';
-import type { RootState } from '@react-three/fiber';
+import type { Root } from 'react-dom/client';
+import R3FProvider from './r3fProvider';
+import BaseScene from './BaseScene';
+import { useR3FStore } from './stores/sceneStore';
 
-export const R3FContext = createContext<any>(null);
+// Type definition for scene map
+interface SceneMap {
+  [key: string]: React.ComponentType;
+}
 
-const R3FProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // This ref will store the R3F state
-  const stateRef = useRef<RootState | null>(null);
-
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (stateRef.current) {
-        // Capture PresentationControls state by getting the actual world matrix of the camera
-        const camera = stateRef.current.camera;
-        const position = camera.position.clone();
-        const quaternion = camera.quaternion.clone();
-        const rotation = camera.rotation.toArray();
-
-        const state = {
-          cameraPosition: position.toArray(),
-          cameraRotation: rotation,
-          cameraQuaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
-          zoom: camera.zoom,
-          timestamp: Date.now(),
-        };
-
-        console.log('[R3F] Saving camera state:', state);
-        sessionStorage.setItem('r3f-state', JSON.stringify(state));
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
-
-  return (
-    <R3FContext.Provider value={stateRef}>
-      <Canvas
-        onCreated={(state) => {
-          // Store the state in our ref
-          stateRef.current = state;
-
-          // Restore saved state if available
-          const savedState = sessionStorage.getItem('r3f-state');
-          if (savedState) {
-            try {
-              const parsedState = JSON.parse(savedState);
-              console.log('[R3F] Restoring camera state:', parsedState);
-
-              // Apply position
-              if (parsedState.cameraPosition) {
-                state.camera.position.fromArray(parsedState.cameraPosition);
-              }
-
-              // Apply rotation - use quaternion if available for more accurate rotation
-              if (parsedState.cameraQuaternion) {
-                state.camera.quaternion.set(
-                  parsedState.cameraQuaternion[0],
-                  parsedState.cameraQuaternion[1],
-                  parsedState.cameraQuaternion[2],
-                  parsedState.cameraQuaternion[3]
-                );
-              } else if (parsedState.cameraRotation) {
-                state.camera.rotation.fromArray(parsedState.cameraRotation);
-              }
-
-              // Apply zoom if it exists
-              if (parsedState.zoom) {
-                state.camera.zoom = parsedState.zoom;
-                state.camera.updateProjectionMatrix();
-              }
-            } catch (e) {
-              console.error('[R3F] Failed to restore state:', e);
-            }
-          }
-        }}
-      >
-        {children}
-      </Canvas>
-    </R3FContext.Provider>
-  );
-};
-
-// Hook to access the R3F context
-export const useR3F = () => useContext(R3FContext);
+// Add this to fix Window type issue
+declare global {
+  interface Window {
+    Webflow?: any[];
+  }
+}
 
 // Function to initialize R3F in Webflow
-export const initR3F = (containerId: string, Scene: React.ComponentType, props = {}) => {
+export const initR3F = (containerId: string, Scene: React.ComponentType): Root | undefined => {
   const container = document.getElementById(containerId);
   if (!container) {
     console.error(`[R3F] Container #${containerId} not found`);
-    return;
+    return undefined;
   }
-
-  console.log(`[R3F] Mounting scene in #${containerId}`);
 
   const root = createRoot(container);
   root.render(
     <R3FProvider>
-      <Scene {...props} />
+      <Scene />
     </R3FProvider>
   );
 
-  return root; // Return root for potential cleanup
+  return root;
 };
+
+// WebflowR3F class
+export class WebflowR3F {
+  private initialized = false;
+  private currentRoot: Root | undefined = undefined;
+
+  constructor(private sceneMap: SceneMap = {}) {}
+
+  init(): void {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    // Initialize Webflow array if it doesn't exist
+    window.Webflow = window.Webflow || [];
+    window.Webflow.push(() => {
+      this.mountScene();
+
+      // Handle page transitions
+      window.addEventListener('beforeunload', () => this.unmountScene());
+      document.addEventListener('DOMContentLoaded', () => this.mountScene());
+    });
+  }
+
+  private mountScene(): void {
+    const path = window.location.pathname;
+    console.log(`[WebflowR3F] Mounting scene for path: ${path}`);
+
+    // Get the default scene or create a basic one if none is provided
+    const defaultScene =
+      Object.values(this.sceneMap)[0] ||
+      (() => (
+        <BaseScene>
+          <mesh>
+            <boxGeometry />
+            <meshStandardMaterial color="blue" />
+          </mesh>
+        </BaseScene>
+      ));
+
+    // Use the specific scene for the current path or the default
+    const SceneComponent = this.sceneMap[path] || defaultScene;
+    this.currentRoot = initR3F('r3f-container', SceneComponent);
+  }
+
+  private unmountScene(): void {
+    console.log('[WebflowR3F] Unmounting scene');
+
+    if (this.currentRoot) {
+      try {
+        this.currentRoot.unmount();
+      } catch (e) {
+        console.error('[WebflowR3F] Error unmounting:', e);
+      }
+    }
+  }
+
+  // Method to manually reset state
+  public resetState(): void {
+    const { resetState } = useR3FStore.getState();
+    resetState();
+  }
+}
+
+// Re-export components for easier imports
+export { default as BaseScene } from './BaseScene';
