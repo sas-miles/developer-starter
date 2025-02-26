@@ -41,20 +41,27 @@
     "@finsweet/eslint-config": "^3.0.3",
     "@finsweet/tsconfig": "^1.4.2",
     "@playwright/test": "^1.50.1",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
     "cross-env": "^7.0.3",
     "esbuild": "^0.24.2",
     "eslint": "^9.19.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.3",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.23.0"
   },
   "dependencies": {
-    "@finsweet/ts-utils": "^0.40.0"
+    "@finsweet/ts-utils": "^0.40.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "engines": {
     "pnpm": ">=10"
-  }
+  },
+  "packageManager": "pnpm@10.5.1+sha512.c424c076bd25c1a5b188c37bb1ca56cc1e136fbf530d98bcb3289982a08fd25527b8c9c4ec113be5e3393c39af04521dd647bcf1d0801eaf8ac6a7b14da313af"
 }

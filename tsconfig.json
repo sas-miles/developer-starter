@@ -6,6 +6,10 @@
     "paths": {
       "$utils/*": ["src/utils/*"]
     },
-    "types": ["@finsweet/ts-utils"]
+    "types": ["@finsweet/ts-utils"],
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
   }
 }
